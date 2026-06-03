@@ -27,7 +27,7 @@ jobs:
           coverage: none
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --ignore-security-advisories
+        run: composer install --prefer-dist --no-progress --no-security-blocking
 
       - name: Run tests
         run: vendor/bin/phpunit
