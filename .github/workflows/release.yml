@@ -1,0 +1,87 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  tests:
+    name: Test before release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          extensions: pdo, pdo_sqlite, json
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      - name: Run tests
+        run: vendor/bin/phpunit
+
+  publish:
+    name: Tag & notify Packagist
+    runs-on: ubuntu-latest
+    needs: tests
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+
+      - name: Check if version tag already exists
+        id: version_check
+        run: |
+          VERSION=$(php -r "echo json_decode(file_get_contents('composer.json'), true)['version'];")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          if git ls-remote --tags origin "refs/tags/v$VERSION" 2>/dev/null | grep -q .; then
+            echo "should_publish=false" >> $GITHUB_OUTPUT
+            echo "Tag v$VERSION already exists — skipping publish."
+          else
+            echo "should_publish=true" >> $GITHUB_OUTPUT
+            echo "New version detected: $VERSION"
+          fi
+
+      - name: Create and push git tag
+        if: steps.version_check.outputs.should_publish == 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "v${{ steps.version_check.outputs.version }}"
+          git push origin "v${{ steps.version_check.outputs.version }}"
+
+      - name: Notify Packagist
+        if: steps.version_check.outputs.should_publish == 'true'
+        run: |
+          curl -sSf -X POST \
+            "https://packagist.org/api/update-package?username=apiforge&apiToken=${{ secrets.PACKAGIST_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{"repository":{"url":"https://github.com/APIForge-Organisation/sdk-composer"}}'
+
+      - name: Create GitHub Release
+        if: steps.version_check.outputs.should_publish == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const version = '${{ steps.version_check.outputs.version }}';
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              tag_name:   `v${version}`,
+              name:       `v${version}`,
+              body:       `## apiforgephp v${version}\n\nSee [CHANGELOG.md](https://github.com/APIForge-Organisation/sdk-composer/blob/main/CHANGELOG.md) for details.\n\n\`\`\`bash\ncomposer require apiforge/apiforgephp:${version}\n\`\`\``,
+              draft:      false,
+              prerelease: version.startsWith('0.'),
+            });
