@@ -12,7 +12,7 @@
         "metrics", "performance", "middleware", "local-first", "analytics"
     ],
     "require": {
-        "php": ">=8.1",
+        "php": ">=8.2",
         "ext-pdo": "*",
         "ext-pdo_sqlite": "*",
         "ext-json": "*"

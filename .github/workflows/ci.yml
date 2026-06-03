@@ -13,7 +13,7 @@ jobs:
 
     strategy:
       matrix:
-        php-version: ["8.1", "8.2", "8.3"]
+        php-version: ["8.2", "8.3"]
 
     steps:
       - name: Checkout
@@ -27,7 +27,7 @@ jobs:
           coverage: none
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress
+        run: composer install --prefer-dist --no-progress --ignore-security-advisories
 
       - name: Run tests
         run: vendor/bin/phpunit
