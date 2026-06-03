@@ -94,7 +94,7 @@ class DatabaseTest extends TestCase
         // Insert event with a very old created_at by manipulating the data directly
         $this->db->insertEvent(['route' => '/old', 'method' => 'GET', 'status' => 200, 'duration_ms' => 5.0, 'env' => 'test']);
 
-        $this->db->pruneOldEvents(0); // prune everything older than 0 days = everything
+        $this->db->pruneOldEvents(-1); // cutoff = tomorrow → deletes all existing events
 
         $routes = $this->db->getRoutes(24 * 365);
         $this->assertCount(0, $routes);
