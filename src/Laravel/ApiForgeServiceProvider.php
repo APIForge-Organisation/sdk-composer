@@ -29,7 +29,12 @@ class ApiForgeServiceProvider extends ServiceProvider
             $apiKey   = config('apiforge.api_key');
 
             $transport = ($cloudUrl && $apiKey)
-                ? new CloudTransport((string) $cloudUrl, (string) $apiKey, (string) config('apiforge.service', 'default'))
+                ? new CloudTransport(
+                    (string) $cloudUrl,
+                    (string) $apiKey,
+                    (string) config('apiforge.service', 'default'),
+                    (int) config('apiforge.flush_interval', 60),
+                  )
                 : new LocalTransport($this->app->make(Database::class));
 
             return new Aggregator($transport);
@@ -37,10 +42,11 @@ class ApiForgeServiceProvider extends ServiceProvider
 
         $this->app->bind(ApiForgeMiddleware::class, function (): ApiForgeMiddleware {
             return new ApiForgeMiddleware($this->app->make(Aggregator::class), [
-                'ignore_paths' => config('apiforge.ignore_paths', ['/favicon.ico']),
-                'sampling'     => (float) config('apiforge.sampling', 1.0),
-                'env'          => (string) config('apiforge.env', app()->environment()),
-                'release_tag'  => config('apiforge.release') ?? env('APP_VERSION'),
+                'ignore_paths'  => config('apiforge.ignore_paths', ['/favicon.ico']),
+                'sampling'      => (float) config('apiforge.sampling', 1.0),
+                'env'           => (string) config('apiforge.env', app()->environment()),
+                'release_tag'   => config('apiforge.release') ?? env('APP_VERSION'),
+                'inflight_path' => sys_get_temp_dir() . '/apiforgephp_inflight_' . substr(md5(config('apiforge.api_key', 'local')), 0, 8),
             ]);
         });
     }
@@ -56,6 +62,46 @@ class ApiForgeServiceProvider extends ServiceProvider
         $isCloud = (bool) config('apiforge.cloud_url');
         if (!$isCloud && config('apiforge.dashboard_enabled', true)) {
             $this->registerDashboardRoutes();
+        }
+
+        if ($isCloud) {
+            $this->app->booted(fn() => $this->syncKnownRoutes());
+        }
+    }
+
+    private function syncKnownRoutes(): void
+    {
+        $cloudUrl = config('apiforge.cloud_url');
+        $apiKey   = config('apiforge.api_key');
+        if (!$cloudUrl || !$apiKey) {
+            return;
+        }
+
+        // Use a flag file to avoid re-registering on every request
+        $flag = sys_get_temp_dir() . '/apiforgephp_routes_' . substr(md5((string) $apiKey), 0, 8) . '.flag';
+        if (file_exists($flag) && (time() - (int) filemtime($flag)) < 3600) {
+            return;
+        }
+
+        touch($flag);
+
+        $routes = [];
+        foreach (\Illuminate\Support\Facades\Route::getRoutes() as $route) {
+            foreach ($route->methods() as $method) {
+                if (in_array($method, ['HEAD', 'OPTIONS'], true)) {
+                    continue;
+                }
+                $routes[] = ['route' => '/' . ltrim($route->uri(), '/'), 'method' => $method];
+            }
+        }
+
+        if (!empty($routes)) {
+            $transport = new CloudTransport(
+                (string) $cloudUrl,
+                (string) $apiKey,
+                (string) config('apiforge.service', 'default'),
+            );
+            $transport->writeRoutes($routes);
         }
     }
 
