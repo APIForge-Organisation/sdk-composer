@@ -32,6 +32,7 @@ class Database
                 ttfb_ms       REAL,
                 response_size INTEGER,
                 request_size  INTEGER,
+                inflight      INTEGER,
                 env           TEXT    NOT NULL DEFAULT 'production',
                 release_tag   TEXT,
                 is_ghost      INTEGER NOT NULL DEFAULT 0,
@@ -48,26 +49,30 @@ class Database
                 PRIMARY KEY (route, method)
             );
         ");
+
+        // Migrations for databases created before the inflight column was added
+        try { $this->pdo->exec("ALTER TABLE api_raw_events ADD COLUMN inflight INTEGER"); } catch (\Exception) {}
     }
 
     public function insertEvent(array $e): void
     {
         $this->pdo->prepare("
             INSERT INTO api_raw_events
-                (route, method, status, duration_ms, ttfb_ms, response_size, request_size, env, release_tag, is_ghost)
+                (route, method, status, duration_ms, ttfb_ms, response_size, request_size, inflight, env, release_tag, is_ghost)
             VALUES
-                (:route, :method, :status, :duration_ms, :ttfb_ms, :response_size, :request_size, :env, :release_tag, :is_ghost)
+                (:route, :method, :status, :duration_ms, :ttfb_ms, :response_size, :request_size, :inflight, :env, :release_tag, :is_ghost)
         ")->execute([
             'route'         => $e['route'],
             'method'        => $e['method'],
             'status'        => $e['status'],
             'duration_ms'   => $e['duration_ms'],
-            'ttfb_ms'       => $e['ttfb_ms'] ?? null,
-            'response_size' => $e['response_size'] ?? null,
-            'request_size'  => $e['request_size'] ?? null,
-            'env'           => $e['env'] ?? 'production',
-            'release_tag'   => $e['release_tag'] ?? null,
-            'is_ghost'      => ($e['is_ghost'] ?? false) ? 1 : 0,
+            'ttfb_ms'       => $e['ttfb_ms']       ?? null,
+            'response_size' => $e['response_size']  ?? null,
+            'request_size'  => $e['request_size']   ?? null,
+            'inflight'      => $e['inflight']        ?? null,
+            'env'           => $e['env']             ?? 'production',
+            'release_tag'   => $e['release_tag']     ?? null,
+            'is_ghost'      => ($e['is_ghost']       ?? false) ? 1 : 0,
         ]);
     }
 
@@ -122,16 +127,18 @@ class Database
         $stmt = $this->pdo->prepare("
             SELECT
                 route, method, is_ghost,
-                COUNT(*)                                                                  as calls,
-                SUM(CASE WHEN status >= 200 AND status < 300 THEN 1 ELSE 0 END)          as calls_2xx,
-                SUM(CASE WHEN status >= 300 AND status < 400 THEN 1 ELSE 0 END)          as calls_3xx,
-                SUM(CASE WHEN status >= 400 AND status < 500 THEN 1 ELSE 0 END)          as calls_4xx,
-                SUM(CASE WHEN status >= 500              THEN 1 ELSE 0 END)              as calls_5xx,
-                AVG(duration_ms)  as lat_avg,
-                MIN(duration_ms)  as lat_min,
-                MAX(duration_ms)  as lat_max,
-                AVG(response_size) as bytes_avg,
-                AVG(request_size)  as request_size_avg
+                COUNT(*)                                                             as calls,
+                SUM(CASE WHEN status >= 200 AND status < 300 THEN 1 ELSE 0 END)     as calls_2xx,
+                SUM(CASE WHEN status >= 300 AND status < 400 THEN 1 ELSE 0 END)     as calls_3xx,
+                SUM(CASE WHEN status >= 400 AND status < 500 THEN 1 ELSE 0 END)     as calls_4xx,
+                SUM(CASE WHEN status >= 500              THEN 1 ELSE 0 END)         as calls_5xx,
+                AVG(duration_ms)                                                     as lat_avg,
+                MIN(duration_ms)                                                     as lat_min,
+                MAX(duration_ms)                                                     as lat_max,
+                AVG(response_size)                                                   as bytes_avg,
+                AVG(request_size)                                                    as request_size_avg,
+                AVG(inflight)                                                        as inflight_avg,
+                MAX(inflight)                                                        as inflight_max
             FROM api_raw_events
             WHERE created_at >= ?
             GROUP BY route, method, is_ghost
