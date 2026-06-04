@@ -25,7 +25,8 @@ return [
     /*
      * Sampling rate between 0.0 and 1.0 (default: record every request).
      */
-    'sampling' => (float) env('APIFORGE_SAMPLING', 1.0),
+    'sampling'        => (float) env('APIFORGE_SAMPLING', 1.0),
+    'flush_interval'  => (int) env('APIFORGE_FLUSH_INTERVAL', 60),
 
     /*
      * Paths that will never be recorded (exact match on the URI path).

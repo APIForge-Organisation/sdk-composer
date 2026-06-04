@@ -14,7 +14,6 @@ namespace ApiForge;
  */
 class CloudTransport implements TransportInterface
 {
-    private const FLUSH_INTERVAL    = 60;   // seconds — mirrors Node/Python flushInterval
     private const CIRCUIT_OPEN_SEC  = 60;
     private const FAILURE_THRESHOLD = 5;
 
@@ -23,10 +22,15 @@ class CloudTransport implements TransportInterface
     private int $failures  = 0;
     private int $openUntil = 0;
 
+    /**
+     * @param int $flushInterval Seconds between cloud flushes (mirrors Node/Python flushIntervalMs / 1000).
+     *                           Default 60s. Lower for testing (e.g. 15s via APIFORGE_FLUSH_INTERVAL env var).
+     */
     public function __construct(
         string $cloudUrl,
         private readonly string $apiKey,
         private readonly string $service,
+        private readonly int $flushInterval = 60,
     ) {
         $this->ingestUrl  = rtrim($cloudUrl, '/') . '/ingest';
         $this->bufferPath = sys_get_temp_dir() . '/apiforgephp_' . substr(md5($apiKey), 0, 12) . '.jsonl';
@@ -112,7 +116,7 @@ class CloudTransport implements TransportInterface
 
         $createdAt = (int) substr(trim($header), 4);
 
-        return (time() - $createdAt) >= self::FLUSH_INTERVAL;
+        return (time() - $createdAt) >= $this->flushInterval;
     }
 
     private function flushBuffer(): void

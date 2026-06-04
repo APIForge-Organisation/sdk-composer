@@ -29,7 +29,12 @@ class ApiForgeServiceProvider extends ServiceProvider
             $apiKey   = config('apiforge.api_key');
 
             $transport = ($cloudUrl && $apiKey)
-                ? new CloudTransport((string) $cloudUrl, (string) $apiKey, (string) config('apiforge.service', 'default'))
+                ? new CloudTransport(
+                    (string) $cloudUrl,
+                    (string) $apiKey,
+                    (string) config('apiforge.service', 'default'),
+                    (int) config('apiforge.flush_interval', 60),
+                  )
                 : new LocalTransport($this->app->make(Database::class));
 
             return new Aggregator($transport);
