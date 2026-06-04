@@ -54,11 +54,12 @@ class CloudTransport implements TransportInterface
             $this->post($this->ingestUrl, ['metrics' => $metrics]);
             $this->failures = 0;
         } catch (\RuntimeException $e) {
+            error_log('[apiforgephp] Cloud flush error: ' . $e->getMessage());
             $this->failures++;
             if ($this->failures >= self::FAILURE_THRESHOLD) {
                 $this->openUntil = time() + self::CIRCUIT_OPEN_SEC;
                 $this->failures  = 0;
-                error_log('[apiforgephp] Cloud flush failures — pausing for ' . self::CIRCUIT_OPEN_SEC . 's. Error: ' . $e->getMessage());
+                error_log('[apiforgephp] Circuit open — pausing for ' . self::CIRCUIT_OPEN_SEC . 's.');
             }
         }
     }
@@ -73,7 +74,7 @@ class CloudTransport implements TransportInterface
             'service'          => $this->service,
             'env'              => $e['env']         ?? 'production',
             'release'          => $e['release_tag'] ?? null,
-            'time'             => date('c', (int) ($e['created_at'] ?? time())),
+            'time'             => gmdate('Y-m-d\TH:i:s.000\Z', (int) ($e['created_at'] ?? time())),
             'calls_total'      => 1,
             'calls_2xx'        => ($s >= 200 && $s < 300) ? 1 : 0,
             'calls_3xx'        => ($s >= 300 && $s < 400) ? 1 : 0,
@@ -109,7 +110,7 @@ class CloudTransport implements TransportInterface
         $code    = (int) explode(' ', $status)[1];
 
         if ($result === false || $code >= 400) {
-            throw new \RuntimeException("HTTP $code from $url");
+            throw new \RuntimeException("HTTP $code from $url — " . substr((string) $result, 0, 200));
         }
     }
 }
