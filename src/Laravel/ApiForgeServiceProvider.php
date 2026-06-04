@@ -33,7 +33,6 @@ class ApiForgeServiceProvider extends ServiceProvider
                     (string) $cloudUrl,
                     (string) $apiKey,
                     (string) config('apiforge.service', 'default'),
-                    (int) config('apiforge.flush_interval', 60),
                   )
                 : new LocalTransport($this->app->make(Database::class));
 
@@ -45,7 +44,7 @@ class ApiForgeServiceProvider extends ServiceProvider
                 'ignore_paths'  => config('apiforge.ignore_paths', ['/favicon.ico']),
                 'sampling'      => (float) config('apiforge.sampling', 1.0),
                 'env'           => (string) config('apiforge.env', app()->environment()),
-                'release_tag'   => config('apiforge.release') ?? env('APP_VERSION'),
+                'release_tag'   => config('apiforge.release'),
                 'inflight_path' => sys_get_temp_dir() . '/apiforgephp_inflight_' . substr(md5(config('apiforge.api_key', 'local')), 0, 8),
             ]);
         });

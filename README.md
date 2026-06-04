@@ -72,7 +72,6 @@ Or configure via environment variables:
 | `APIFORGE_RELEASE`          | `APP_VERSION`       | Release/version tag for regression tracking      |
 | `APIFORGE_SERVICE`          | `APP_NAME`          | Service name                                      |
 | `APIFORGE_SAMPLING`         | `1.0`               | Sample rate 0.0–1.0                               |
-| `APIFORGE_FLUSH_INTERVAL`   | `60`                | Cloud mode: seconds between ingest flushes        |
 | `APIFORGE_DASHBOARD`        | `true`              | Enable/disable the local dashboard routes         |
 | `APIFORGE_DASHBOARD_PREFIX` | `_apiforge`         | URL prefix for the local dashboard                |
 | `APIFORGE_CLOUD_URL`        | —                   | Cloud mode: SaaS API base URL                     |
@@ -94,7 +93,7 @@ APIFORGE_API_KEY=af_your_project_key
 })
 ```
 
-In cloud mode, events are buffered to a local temp file and flushed to the SaaS ingest API every `APIFORGE_FLUSH_INTERVAL` seconds (default 60). The local dashboard is disabled automatically.
+In cloud mode, events are buffered to a local temp file and flushed to the SaaS ingest API every 60 seconds. The local dashboard is disabled automatically.
 
 ## Release tracking
 

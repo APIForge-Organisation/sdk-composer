@@ -23,15 +23,11 @@ class CloudTransport implements TransportInterface
     private int $failures  = 0;
     private int $openUntil = 0;
 
-    /**
-     * @param int $flushInterval Seconds between cloud flushes (mirrors Node/Python flushIntervalMs / 1000).
-     *                           Default 60s. Lower for testing (e.g. 15s via APIFORGE_FLUSH_INTERVAL env var).
-     */
     public function __construct(
         string $cloudUrl,
         private readonly string $apiKey,
         private readonly string $service,
-        private readonly int $flushInterval = 60,
+        private readonly int $flushInterval = 60, // fixed at 60s — not part of the public API
     ) {
         $this->ingestUrl  = rtrim($cloudUrl, '/') . '/ingest';
         $prefix           = sys_get_temp_dir() . '/apiforgephp_' . substr(md5($apiKey), 0, 12);
