@@ -199,30 +199,32 @@ class CloudTransport implements TransportInterface
 
             if (!isset($buckets[$key])) {
                 $buckets[$key] = [
-                    'method'          => $e['method'],
-                    'route'           => $e['route'],
-                    'env'             => $e['env'] ?? 'production',
-                    'release'         => $e['release_tag'] ?? null,
-                    'is_ghost'        => (bool) ($e['is_ghost'] ?? false),
-                    'durations'       => [],
-                    'ttfb_durations'  => [],
-                    'response_sizes'  => [],
-                    'request_sizes'   => [],
-                    'status_2xx'      => 0,
-                    'status_3xx'      => 0,
-                    'status_4xx'      => 0,
-                    'status_5xx'      => 0,
-                    'status_map'      => [],
-                    'bucket_ts'       => $bucketTs,
+                    'method'           => $e['method'],
+                    'route'            => $e['route'],
+                    'env'              => $e['env'] ?? 'production',
+                    'release'          => $e['release_tag'] ?? null,
+                    'is_ghost'         => (bool) ($e['is_ghost'] ?? false),
+                    'durations'        => [],
+                    'ttfb_durations'   => [],
+                    'response_sizes'   => [],
+                    'request_sizes'    => [],
+                    'inflight_samples' => [],
+                    'status_2xx'       => 0,
+                    'status_3xx'       => 0,
+                    'status_4xx'       => 0,
+                    'status_5xx'       => 0,
+                    'status_map'       => [],
+                    'bucket_ts'        => $bucketTs,
                 ];
             }
 
             $b = &$buckets[$key];
             $b['durations'][] = (float) $e['duration_ms'];
 
-            if (($e['ttfb_ms'] ?? null) !== null)       $b['ttfb_durations'][]  = (float) $e['ttfb_ms'];
-            if (($e['response_size'] ?? null) !== null)  $b['response_sizes'][]  = (int)   $e['response_size'];
-            if (($e['request_size'] ?? null) !== null)   $b['request_sizes'][]   = (int)   $e['request_size'];
+            if (($e['ttfb_ms'] ?? null) !== null)       $b['ttfb_durations'][]   = (float) $e['ttfb_ms'];
+            if (($e['response_size'] ?? null) !== null)  $b['response_sizes'][]   = (int)   $e['response_size'];
+            if (($e['request_size'] ?? null) !== null)   $b['request_sizes'][]    = (int)   $e['request_size'];
+            if (($e['inflight'] ?? null) !== null)       $b['inflight_samples'][] = (int)   $e['inflight'];
 
             $s = (int) $e['status'];
             $b['status_map'][$s] = ($b['status_map'][$s] ?? 0) + 1;
@@ -238,10 +240,11 @@ class CloudTransport implements TransportInterface
     /** @param array<string, mixed> $b */
     private function formatBucket(array $b): array
     {
-        $sorted  = $b['durations'];
-        $ttfb    = $b['ttfb_durations'];
-        $sizes   = $b['response_sizes'];
+        $sorted   = $b['durations'];
+        $ttfb     = $b['ttfb_durations'];
+        $sizes    = $b['response_sizes'];
         $reqSizes = $b['request_sizes'];
+        $inflight = $b['inflight_samples'];
 
         sort($sorted);
         sort($ttfb);
@@ -273,8 +276,10 @@ class CloudTransport implements TransportInterface
             'lat_ttfb_p50'     => !empty($ttfb) ? $this->percentile($ttfb, 0.50) : null,
             'lat_ttfb_p90'     => !empty($ttfb) ? $this->percentile($ttfb, 0.90) : null,
             'lat_ttfb_p99'     => !empty($ttfb) ? $this->percentile($ttfb, 0.99) : null,
-            'bytes_avg'        => !empty($sizes) ? array_sum($sizes) / count($sizes) : null,
+            'bytes_avg'        => !empty($sizes)    ? array_sum($sizes)    / count($sizes)    : null,
             'request_size_avg' => !empty($reqSizes) ? array_sum($reqSizes) / count($reqSizes) : null,
+            'inflight_avg'     => !empty($inflight) ? array_sum($inflight) / count($inflight) : null,
+            'inflight_max'     => !empty($inflight) ? max($inflight)                          : null,
             'is_ghost'         => $b['is_ghost'],
         ];
     }

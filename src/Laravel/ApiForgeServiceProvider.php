@@ -42,10 +42,11 @@ class ApiForgeServiceProvider extends ServiceProvider
 
         $this->app->bind(ApiForgeMiddleware::class, function (): ApiForgeMiddleware {
             return new ApiForgeMiddleware($this->app->make(Aggregator::class), [
-                'ignore_paths' => config('apiforge.ignore_paths', ['/favicon.ico']),
-                'sampling'     => (float) config('apiforge.sampling', 1.0),
-                'env'          => (string) config('apiforge.env', app()->environment()),
-                'release_tag'  => config('apiforge.release') ?? env('APP_VERSION'),
+                'ignore_paths'  => config('apiforge.ignore_paths', ['/favicon.ico']),
+                'sampling'      => (float) config('apiforge.sampling', 1.0),
+                'env'           => (string) config('apiforge.env', app()->environment()),
+                'release_tag'   => config('apiforge.release') ?? env('APP_VERSION'),
+                'inflight_path' => sys_get_temp_dir() . '/apiforgephp_inflight_' . substr(md5(config('apiforge.api_key', 'local')), 0, 8),
             ]);
         });
     }
