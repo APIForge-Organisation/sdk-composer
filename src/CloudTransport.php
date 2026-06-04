@@ -19,6 +19,7 @@ class CloudTransport implements TransportInterface
 
     private readonly string $ingestUrl;
     private readonly string $bufferPath;
+    private readonly string $tsPath;
     private int $failures  = 0;
     private int $openUntil = 0;
 
@@ -33,7 +34,9 @@ class CloudTransport implements TransportInterface
         private readonly int $flushInterval = 60,
     ) {
         $this->ingestUrl  = rtrim($cloudUrl, '/') . '/ingest';
-        $this->bufferPath = sys_get_temp_dir() . '/apiforgephp_' . substr(md5($apiKey), 0, 12) . '.jsonl';
+        $prefix           = sys_get_temp_dir() . '/apiforgephp_' . substr(md5($apiKey), 0, 12);
+        $this->bufferPath = $prefix . '.jsonl';
+        $this->tsPath     = $prefix . '.ts';
     }
 
     public function writeRoutes(array $routes): void
@@ -76,47 +79,33 @@ class CloudTransport implements TransportInterface
 
     private function appendToBuffer(array $events): void
     {
+        // Write creation timestamp on first event of a new window
+        if (!file_exists($this->tsPath)) {
+            file_put_contents($this->tsPath, (string) time(), LOCK_EX);
+        }
+
         $fh = @fopen($this->bufferPath, 'a');
         if ($fh === false) {
             return;
         }
 
         flock($fh, LOCK_EX);
-
-        // First line = creation timestamp header (written once when file is new/empty)
-        if (ftell($fh) === 0) {
-            fwrite($fh, '#ts=' . time() . "\n");
-        }
-
         foreach ($events as $event) {
             fwrite($fh, json_encode($event, JSON_THROW_ON_ERROR) . "\n");
         }
-
         flock($fh, LOCK_UN);
         fclose($fh);
     }
 
     private function bufferIsReady(): bool
     {
-        if (!file_exists($this->bufferPath)) {
+        if (!file_exists($this->tsPath) || !file_exists($this->bufferPath)) {
             return false;
         }
 
-        $fh = @fopen($this->bufferPath, 'r');
-        if ($fh === false) {
-            return false;
-        }
+        $createdAt = (int) file_get_contents($this->tsPath);
 
-        $header = fgets($fh);
-        fclose($fh);
-
-        if ($header === false || !str_starts_with($header, '#ts=')) {
-            return false;
-        }
-
-        $createdAt = (int) substr(trim($header), 4);
-
-        return (time() - $createdAt) >= $this->flushInterval;
+        return $createdAt > 0 && (time() - $createdAt) >= $this->flushInterval;
     }
 
     private function flushBuffer(): void
@@ -148,6 +137,9 @@ class CloudTransport implements TransportInterface
         flock($fh, LOCK_UN);
         fclose($fh);
 
+        // Reset the timestamp so the next window starts fresh
+        @unlink($this->tsPath);
+
         $rawEvents = $this->parseBuffer((string) $content);
         if (empty($rawEvents)) {
             return;
@@ -167,7 +159,10 @@ class CloudTransport implements TransportInterface
                 $this->failures  = 0;
                 error_log('[apiforgephp] Circuit open — pausing for ' . self::CIRCUIT_OPEN_SEC . 's.');
             }
-            // Re-buffer failed events so they are not lost
+            // Re-buffer failed events so they are not lost (restore ts file too)
+            if (!file_exists($this->tsPath)) {
+                file_put_contents($this->tsPath, (string) time(), LOCK_EX);
+            }
             $this->appendToBuffer($rawEvents);
         }
     }
