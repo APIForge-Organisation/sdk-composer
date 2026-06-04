@@ -2,31 +2,31 @@
 
 return [
     /*
-     * Observability mode: 'local' stores metrics in a local SQLite database with an
-     * embedded dashboard. 'cloud' ships metrics to the APIForge SaaS platform.
+     * Cloud mode: set both cloud_url and api_key to send metrics to the APIForge SaaS.
+     * Leave null to use local mode (SQLite + embedded dashboard).
      */
-    'cloud_url' => env('APIFORGE_CLOUD_URL'),
-    'api_key'   => env('APIFORGE_API_KEY'),
+    'cloud_url' => null,
+    'api_key'   => null,
 
     /*
      * Local mode — SQLite file path and dashboard settings.
      */
-    'db_path'          => storage_path('.apiforge.db'),
-    'dashboard_enabled'=> (bool) env('APIFORGE_DASHBOARD', true),
-    'dashboard_prefix' => env('APIFORGE_DASHBOARD_PREFIX', '_apiforge'),
+    'db_path'           => storage_path('.apiforge.db'),
+    'dashboard_enabled' => true,
+    'dashboard_prefix'  => '_apiforge',
 
     /*
      * Metadata attached to every recorded metric.
+     * Set these explicitly — the SDK does not read environment variables.
      */
-    'env'     => env('APIFORGE_ENV', env('APP_ENV', 'production')),
-    'release' => env('APIFORGE_RELEASE', env('APP_VERSION')),
-    'service' => env('APIFORGE_SERVICE', env('APP_NAME', 'default')),
+    'env'     => 'production',
+    'release' => null,
+    'service' => 'default',
 
     /*
      * Sampling rate between 0.0 and 1.0 (default: record every request).
      */
-    'sampling'        => (float) env('APIFORGE_SAMPLING', 1.0),
-    'flush_interval'  => (int) env('APIFORGE_FLUSH_INTERVAL', 60),
+    'sampling' => 1.0,
 
     /*
      * Paths that will never be recorded (exact match on the URI path).
