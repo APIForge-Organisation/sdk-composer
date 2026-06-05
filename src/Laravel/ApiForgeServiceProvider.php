@@ -59,48 +59,70 @@ class ApiForgeServiceProvider extends ServiceProvider
         }
 
         $isCloud = (bool) config('apiforge.cloud_url');
+
         if (!$isCloud && config('apiforge.dashboard_enabled', true)) {
-            $this->registerDashboardRoutes();
+            try {
+                $this->registerDashboardRoutes();
+            } catch (\Throwable $e) {
+                error_log('[apiforgephp] dashboard registration error: ' . $e->getMessage());
+            }
         }
 
         if ($isCloud) {
-            $this->app->booted(fn() => $this->syncKnownRoutes());
+            $this->app->booted(function (): void {
+                try {
+                    $this->syncKnownRoutes();
+                } catch (\Throwable $e) {
+                    error_log('[apiforgephp] syncKnownRoutes error: ' . $e->getMessage());
+                }
+            });
         }
     }
 
     private function syncKnownRoutes(): void
     {
-        $cloudUrl = config('apiforge.cloud_url');
-        $apiKey   = config('apiforge.api_key');
-        if (!$cloudUrl || !$apiKey) {
-            return;
-        }
-
-        // Use a flag file to avoid re-registering on every request
-        $flag = sys_get_temp_dir() . '/apiforgephp_routes_' . substr(md5((string) $apiKey), 0, 8) . '.flag';
-        if (file_exists($flag) && (time() - (int) filemtime($flag)) < 3600) {
-            return;
-        }
-
-        touch($flag);
-
-        $routes = [];
-        foreach (\Illuminate\Support\Facades\Route::getRoutes() as $route) {
-            foreach ($route->methods() as $method) {
-                if (in_array($method, ['HEAD', 'OPTIONS'], true)) {
-                    continue;
-                }
-                $routes[] = ['route' => '/' . ltrim($route->uri(), '/'), 'method' => $method];
+        try {
+            $cloudUrl = config('apiforge.cloud_url');
+            $apiKey   = config('apiforge.api_key');
+            if (!$cloudUrl || !$apiKey) {
+                return;
             }
-        }
 
-        if (!empty($routes)) {
-            $transport = new CloudTransport(
-                (string) $cloudUrl,
-                (string) $apiKey,
-                (string) config('apiforge.service', 'default'),
-            );
-            $transport->writeRoutes($routes);
+            // Include effective UID so a flag created by root (e.g. artisan in a deploy
+            // container) does not block php-fpm running as www-data.
+            $uid  = function_exists('posix_geteuid') ? (string) posix_geteuid() : '0';
+            $flag = sys_get_temp_dir() . '/apiforgephp_routes_' . substr(md5((string) $apiKey . '|' . $uid), 0, 8) . '.flag';
+
+            if (file_exists($flag) && (time() - (int) filemtime($flag)) < 3600) {
+                return;
+            }
+
+            // @touch: a permission error (cross-user /tmp flag, read-only FS…) must
+            // never propagate — route sync is best-effort, not request-critical.
+            if (@touch($flag) === false) {
+                return;
+            }
+
+            $routes = [];
+            foreach (\Illuminate\Support\Facades\Route::getRoutes() as $route) {
+                foreach ($route->methods() as $method) {
+                    if (in_array($method, ['HEAD', 'OPTIONS'], true)) {
+                        continue;
+                    }
+                    $routes[] = ['route' => '/' . ltrim($route->uri(), '/'), 'method' => $method];
+                }
+            }
+
+            if (!empty($routes)) {
+                $transport = new CloudTransport(
+                    (string) $cloudUrl,
+                    (string) $apiKey,
+                    (string) config('apiforge.service', 'default'),
+                );
+                $transport->writeRoutes($routes);
+            }
+        } catch (\Throwable $e) {
+            error_log('[apiforgephp] syncKnownRoutes skipped: ' . $e->getMessage());
         }
     }
 

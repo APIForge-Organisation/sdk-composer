@@ -32,22 +32,36 @@ class ApiForgeMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         $start    = hrtime(true);
-        $inflight = $this->incrementInflight();
+        $inflight = 1;
+
+        try {
+            $inflight = $this->incrementInflight();
+        } catch (\Throwable $e) {
+            error_log('[apiforgephp] incrementInflight error: ' . $e->getMessage());
+        }
 
         try {
             $response = $next($request);
         } finally {
-            $this->decrementInflight();
+            try {
+                $this->decrementInflight();
+            } catch (\Throwable $e) {
+                error_log('[apiforgephp] decrementInflight error: ' . $e->getMessage());
+            }
         }
 
-        $duration = (hrtime(true) - $start) / 1_000_000;
-        $path     = '/' . ltrim($request->path(), '/');
+        try {
+            $duration = (hrtime(true) - $start) / 1_000_000;
+            $path     = '/' . ltrim($request->path(), '/');
 
-        if (!in_array($path, $this->ignorePaths, true)) {
-            $sampled = $this->sampling >= 1.0 || (mt_rand() / mt_getrandmax()) <= $this->sampling;
-            if ($sampled) {
-                $this->record($request, $response, $duration, $inflight);
+            if (!in_array($path, $this->ignorePaths, true)) {
+                $sampled = $this->sampling >= 1.0 || (mt_rand() / mt_getrandmax()) <= $this->sampling;
+                if ($sampled) {
+                    $this->record($request, $response, $duration, $inflight);
+                }
             }
+        } catch (\Throwable $e) {
+            error_log('[apiforgephp] middleware record error: ' . $e->getMessage());
         }
 
         return $response;
