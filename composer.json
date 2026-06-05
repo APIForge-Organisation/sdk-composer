@@ -2,7 +2,7 @@
     "name": "apiforge/apiforgephp",
     "description": "API observability & intelligence for Laravel/PSR-15 — local-first, privacy-first",
     "type": "library",
-    "version": "2.0.0",
+    "version": "2.0.1",
     "license": "MIT",
     "authors": [
         {"name": "APIForge"}
