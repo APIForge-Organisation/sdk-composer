@@ -310,7 +310,7 @@ class CloudTransport implements TransportInterface
         $ctx = stream_context_create([
             'http' => [
                 'method'        => 'POST',
-                'header'        => "Content-Type: application/json\r\nX-API-Key: {$this->apiKey}",
+                'header'        => "Content-Type: application/json\r\nX-APIForge-Key: {$this->apiKey}",
                 'content'       => json_encode($payload, JSON_THROW_ON_ERROR),
                 'timeout'       => 5,
                 'ignore_errors' => true,
