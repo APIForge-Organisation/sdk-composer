@@ -51,7 +51,10 @@ class Database
         ");
 
         // Migrations for databases created before the inflight column was added
-        try { $this->pdo->exec("ALTER TABLE api_raw_events ADD COLUMN inflight INTEGER"); } catch (\Exception) {}
+        try {
+            $this->pdo->exec("ALTER TABLE api_raw_events ADD COLUMN inflight INTEGER");
+        } catch (\Exception) {
+        }
     }
 
     public function insertEvent(array $e): void
@@ -219,8 +222,12 @@ class Database
             }
             $buckets[$ts]['durations'][] = (float) $r['duration_ms'];
             $s = (int) $r['status'];
-            if ($s >= 500)             $buckets[$ts]['errors']++;
-            if ($s >= 300 && $s < 400) $buckets[$ts]['redirects']++;
+            if ($s >= 500) {
+                $buckets[$ts]['errors']++;
+            }
+            if ($s >= 300 && $s < 400) {
+                $buckets[$ts]['redirects']++;
+            }
         }
 
         $result = [];
@@ -337,7 +344,7 @@ class Database
                 $stmt->execute([$r['route'], $r['method']]);
             }
             if (!empty($routes)) {
-                $keys = array_map(fn($r) => $r['route'] . '|' . $r['method'], $routes);
+                $keys = array_map(fn ($r) => $r['route'] . '|' . $r['method'], $routes);
                 $ph   = implode(',', array_fill(0, count($keys), '?'));
                 $this->pdo->prepare("
                     DELETE FROM known_routes

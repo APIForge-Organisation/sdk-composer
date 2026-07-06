@@ -12,7 +12,9 @@ class LocalTransport implements TransportInterface
     private int $failures  = 0;
     private int $openUntil = 0;
 
-    public function __construct(private readonly Database $db) {}
+    public function __construct(private readonly Database $db)
+    {
+    }
 
     public function write(array $events): void
     {

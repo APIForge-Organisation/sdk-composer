@@ -33,7 +33,7 @@ class ApiForgeServiceProvider extends ServiceProvider
                     (string) $cloudUrl,
                     (string) $apiKey,
                     (string) config('apiforge.service', 'default'),
-                  )
+                )
                 : new LocalTransport($this->app->make(Database::class));
 
             return new Aggregator($transport);
@@ -132,12 +132,12 @@ class ApiForgeServiceProvider extends ServiceProvider
         $db     = $this->app->make(Database::class);
 
         Route::prefix($prefix)->group(function () use ($db): void {
-            Route::get('/', fn() => response(Dashboard::getHtml(), 200, ['Content-Type' => 'text/html; charset=utf-8']));
-            Route::get('/api/summary',          fn() => $this->apiSummary($db));
-            Route::get('/api/routes',           fn(Request $req) => $this->apiRoutes($db, $req));
-            Route::get('/api/timeseries',       fn(Request $req) => $this->apiTimeseries($db, $req));
-            Route::get('/api/global-timeseries',fn(Request $req) => $this->apiGlobalTimeseries($db, $req));
-            Route::get('/api/releases',         fn() => response()->json($db->getReleases()));
+            Route::get('/', fn () => response(Dashboard::getHtml(), 200, ['Content-Type' => 'text/html; charset=utf-8']));
+            Route::get('/api/summary', fn () => $this->apiSummary($db));
+            Route::get('/api/routes', fn (Request $req) => $this->apiRoutes($db, $req));
+            Route::get('/api/timeseries', fn (Request $req) => $this->apiTimeseries($db, $req));
+            Route::get('/api/global-timeseries', fn (Request $req) => $this->apiGlobalTimeseries($db, $req));
+            Route::get('/api/releases', fn () => response()->json($db->getReleases()));
         });
     }
 
@@ -166,7 +166,7 @@ class ApiForgeServiceProvider extends ServiceProvider
     {
         $hours     = (int) $req->query('hours', 24);
         $routes    = $db->getRoutes($hours);
-        $untracked = array_map(fn($r) => array_merge($r, [
+        $untracked = array_map(fn ($r) => array_merge($r, [
             'calls' => 0, 'calls_2xx' => 0, 'calls_4xx' => 0, 'calls_5xx' => 0,
             'p50' => null, 'p90' => null, 'p99' => null, 'lat_max' => null, 'untracked' => true,
         ]), $db->getUntrackedRoutes());
