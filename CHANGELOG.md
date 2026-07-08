@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.0.0] — 2026-07-08
+
+### Breaking Changes
+
+- **Cloud mode now sends the `X-APIForge-Key` header instead of `X-API-Key`**, matching the saas-api rename (CDC §8.4.1). Cloud ingest against the current APIForge API **requires** this version — 2.x sends the old header and is rejected with `401`. The header is internal to the SDK, so no code change is needed on your side beyond upgrading.
+
+### Fixed
+
+- Local dashboard now embeds the real dashboard UI instead of an empty placeholder.
+
+### Security
+
+- Bumped `laravel/framework` and `orchestra/testbench` (dev) past known security advisories.
+
+### Migration guide
+
+```bash
+composer require apiforge/apiforgephp:^3.0
+```
+
+No configuration change is required — the header is set internally by `CloudTransport`. Upgrade any service running the SDK in cloud mode.
+
+---
+
 ## [2.0.0] — 2026-06-04
 
 ### Breaking Changes

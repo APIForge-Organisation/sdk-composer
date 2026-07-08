@@ -12,7 +12,7 @@ class AggregatorTest extends TestCase
 {
     private function makeTransport(): TransportInterface
     {
-        return new class implements TransportInterface {
+        return new class () implements TransportInterface {
             public array $received = [];
             public int   $calls    = 0;
 

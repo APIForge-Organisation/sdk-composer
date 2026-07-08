@@ -65,7 +65,7 @@ class InsightsTest extends TestCase
 
         $insights = Insights::getInsights($this->db);
 
-        $untracked = array_filter($insights, fn($i) => $i['type'] === 'UNTRACKED');
+        $untracked = array_filter($insights, fn ($i) => $i['type'] === 'UNTRACKED');
         $this->assertCount(1, $untracked);
         $this->assertSame('/never-hit', array_values($untracked)[0]['route']);
     }

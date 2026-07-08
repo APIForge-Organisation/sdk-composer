@@ -42,7 +42,7 @@ class CloudTransport implements TransportInterface
         }
 
         $payload = [
-            'routes' => array_map(fn($r) => [
+            'routes' => array_map(fn ($r) => [
                 'route'   => $r['route'],
                 'method'  => $r['method'],
                 'service' => $this->service,
@@ -217,17 +217,30 @@ class CloudTransport implements TransportInterface
             $b = &$buckets[$key];
             $b['durations'][] = (float) $e['duration_ms'];
 
-            if (($e['ttfb_ms'] ?? null) !== null)       $b['ttfb_durations'][]   = (float) $e['ttfb_ms'];
-            if (($e['response_size'] ?? null) !== null)  $b['response_sizes'][]   = (int)   $e['response_size'];
-            if (($e['request_size'] ?? null) !== null)   $b['request_sizes'][]    = (int)   $e['request_size'];
-            if (($e['inflight'] ?? null) !== null)       $b['inflight_samples'][] = (int)   $e['inflight'];
+            if (($e['ttfb_ms'] ?? null) !== null) {
+                $b['ttfb_durations'][]   = (float) $e['ttfb_ms'];
+            }
+            if (($e['response_size'] ?? null) !== null) {
+                $b['response_sizes'][]   = (int)   $e['response_size'];
+            }
+            if (($e['request_size'] ?? null) !== null) {
+                $b['request_sizes'][]    = (int)   $e['request_size'];
+            }
+            if (($e['inflight'] ?? null) !== null) {
+                $b['inflight_samples'][] = (int)   $e['inflight'];
+            }
 
             $s = (int) $e['status'];
             $b['status_map'][$s] = ($b['status_map'][$s] ?? 0) + 1;
-            if      ($s >= 200 && $s < 300) $b['status_2xx']++;
-            elseif  ($s >= 300 && $s < 400) $b['status_3xx']++;
-            elseif  ($s >= 400 && $s < 500) $b['status_4xx']++;
-            elseif  ($s >= 500)             $b['status_5xx']++;
+            if ($s >= 200 && $s < 300) {
+                $b['status_2xx']++;
+            } elseif ($s >= 300 && $s < 400) {
+                $b['status_3xx']++;
+            } elseif ($s >= 400 && $s < 500) {
+                $b['status_4xx']++;
+            } elseif ($s >= 500) {
+                $b['status_5xx']++;
+            }
         }
 
         return array_values($buckets);
@@ -272,10 +285,10 @@ class CloudTransport implements TransportInterface
             'lat_ttfb_p50'     => !empty($ttfb) ? $this->percentile($ttfb, 0.50) : null,
             'lat_ttfb_p90'     => !empty($ttfb) ? $this->percentile($ttfb, 0.90) : null,
             'lat_ttfb_p99'     => !empty($ttfb) ? $this->percentile($ttfb, 0.99) : null,
-            'bytes_avg'        => !empty($sizes)    ? array_sum($sizes)    / count($sizes)    : null,
+            'bytes_avg'        => !empty($sizes) ? array_sum($sizes)    / count($sizes) : null,
             'request_size_avg' => !empty($reqSizes) ? array_sum($reqSizes) / count($reqSizes) : null,
             'inflight_avg'     => !empty($inflight) ? array_sum($inflight) / count($inflight) : null,
-            'inflight_max'     => !empty($inflight) ? max($inflight)                          : null,
+            'inflight_max'     => !empty($inflight) ? max($inflight) : null,
             'is_ghost'         => $b['is_ghost'],
         ];
     }
@@ -297,7 +310,7 @@ class CloudTransport implements TransportInterface
         $ctx = stream_context_create([
             'http' => [
                 'method'        => 'POST',
-                'header'        => "Content-Type: application/json\r\nX-API-Key: {$this->apiKey}",
+                'header'        => "Content-Type: application/json\r\nX-APIForge-Key: {$this->apiKey}",
                 'content'       => json_encode($payload, JSON_THROW_ON_ERROR),
                 'timeout'       => 5,
                 'ignore_errors' => true,

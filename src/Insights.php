@@ -16,11 +16,26 @@ class Insights
     {
         $insights = [];
 
-        try { array_push($insights, ...self::detectLatencyAnomalies($db));  } catch (\Throwable) {}
-        try { array_push($insights, ...self::detectDeadEndpoints($db));     } catch (\Throwable) {}
-        try { array_push($insights, ...self::detectReleaseRegressions($db));} catch (\Throwable) {}
-        try { array_push($insights, ...self::detectUntrackedRoutes($db));   } catch (\Throwable) {}
-        try { array_push($insights, ...self::detectDrift($db));             } catch (\Throwable) {}
+        try {
+            array_push($insights, ...self::detectLatencyAnomalies($db));
+        } catch (\Throwable) {
+        }
+        try {
+            array_push($insights, ...self::detectDeadEndpoints($db));
+        } catch (\Throwable) {
+        }
+        try {
+            array_push($insights, ...self::detectReleaseRegressions($db));
+        } catch (\Throwable) {
+        }
+        try {
+            array_push($insights, ...self::detectUntrackedRoutes($db));
+        } catch (\Throwable) {
+        }
+        try {
+            array_push($insights, ...self::detectDrift($db));
+        } catch (\Throwable) {
+        }
 
         return $insights;
     }
@@ -55,7 +70,7 @@ class Insights
 
     private static function detectUntrackedRoutes(Database $db): array
     {
-        return array_map(fn($r) => [
+        return array_map(fn ($r) => [
             'type'     => 'UNTRACKED',
             'severity' => 'info',
             'route'    => $r['route'],
@@ -103,7 +118,7 @@ class Insights
             }
 
             $mean  = array_sum($samples) / count($samples);
-            $stdev = sqrt(array_sum(array_map(fn($v) => ($v - $mean) ** 2, $samples)) / count($samples));
+            $stdev = sqrt(array_sum(array_map(fn ($v) => ($v - $mean) ** 2, $samples)) / count($samples));
 
             if ($stdev === 0.0) {
                 continue;

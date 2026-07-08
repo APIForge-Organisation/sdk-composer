@@ -14,12 +14,18 @@ class MiddlewareTest extends TestCase
 {
     private function makeAggregator(): AggregatorInterface
     {
-        return new class implements AggregatorInterface {
+        return new class () implements AggregatorInterface {
             public array $recorded = [];
             public int   $flushes  = 0;
 
-            public function record(array $event): void { $this->recorded[] = $event; }
-            public function flush(): void              { $this->flushes++; }
+            public function record(array $event): void
+            {
+                $this->recorded[] = $event;
+            }
+            public function flush(): void
+            {
+                $this->flushes++;
+            }
         };
     }
 
@@ -29,7 +35,7 @@ class MiddlewareTest extends TestCase
         $middleware = new ApiForgeMiddleware($agg);
 
         $request  = Request::create('/api/users', 'GET');
-        $response = $middleware->handle($request, fn() => new Response('ok', 200));
+        $response = $middleware->handle($request, fn () => new Response('ok', 200));
 
         $this->assertSame(200, $response->getStatusCode());
         $this->assertCount(1, $agg->recorded);
@@ -44,7 +50,7 @@ class MiddlewareTest extends TestCase
         $middleware = new ApiForgeMiddleware($agg);
 
         $request = Request::create('/api/broken', 'POST');
-        $middleware->handle($request, fn() => new Response('error', 500));
+        $middleware->handle($request, fn () => new Response('error', 500));
 
         $this->assertSame(500, $agg->recorded[0]['status']);
     }
@@ -55,7 +61,7 @@ class MiddlewareTest extends TestCase
         $middleware = new ApiForgeMiddleware($agg);
 
         $request = Request::create('/favicon.ico', 'GET');
-        $middleware->handle($request, fn() => new Response('', 200));
+        $middleware->handle($request, fn () => new Response('', 200));
 
         $this->assertCount(0, $agg->recorded);
     }
@@ -66,7 +72,7 @@ class MiddlewareTest extends TestCase
         $middleware = new ApiForgeMiddleware($agg);
 
         $request = Request::create('/users/42/orders/7', 'GET');
-        $middleware->handle($request, fn() => new Response('', 200));
+        $middleware->handle($request, fn () => new Response('', 200));
 
         $this->assertSame('/users/:id/orders/:id', $agg->recorded[0]['route']);
     }
@@ -76,8 +82,8 @@ class MiddlewareTest extends TestCase
         $agg        = $this->makeAggregator();
         $middleware = new ApiForgeMiddleware($agg);
 
-        $middleware->handle(Request::create('/a', 'GET'), fn() => new Response('', 200));
-        $middleware->handle(Request::create('/b', 'GET'), fn() => new Response('', 200));
+        $middleware->handle(Request::create('/a', 'GET'), fn () => new Response('', 200));
+        $middleware->handle(Request::create('/b', 'GET'), fn () => new Response('', 200));
 
         $this->assertSame(2, $agg->flushes);
     }

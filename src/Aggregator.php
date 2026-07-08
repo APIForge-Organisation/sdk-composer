@@ -8,7 +8,9 @@ class Aggregator implements AggregatorInterface
 {
     private array $buffer = [];
 
-    public function __construct(private readonly TransportInterface $transport) {}
+    public function __construct(private readonly TransportInterface $transport)
+    {
+    }
 
     public function record(array $event): void
     {
