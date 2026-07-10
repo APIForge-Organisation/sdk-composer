@@ -51,3 +51,29 @@ jobs:
 
       - name: Run lint
         run: vendor/bin/php-cs-fixer fix --dry-run --diff
+
+  audit:
+    name: Audit dependencies
+    runs-on: ubuntu-latest
+    # Non-blocking on purpose: a new advisory must surface, not stop a release.
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.2"
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
+
+      # `--no-dev` is deliberately NOT passed: this package requires only php
+      # and a few extensions at runtime, so a runtime-only audit has nothing to
+      # look at. What is worth watching here is the build-time supply chain
+      # (phpunit, php-cs-fixer, testbench), which is exactly the dev tree.
+      - name: Audit
+        run: composer audit --abandoned=report
